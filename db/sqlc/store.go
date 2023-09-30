@@ -8,14 +8,14 @@ import (
 
 // Store provides all functions to execute db queries and transactions
 type Store struct {
-	*Queries 
+	*Queries
 	db *sql.DB
 }
 
 // NewStore creates a new Store
 func NewStore(db *sql.DB) *Store {
 	return &Store{
-		db:		 db,
+		db:      db,
 		Queries: New(db),
 	}
 }
@@ -41,9 +41,9 @@ func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
 
 // TransferTxParams contains the input parameter of the transfer transaction
 type TransferTxParams struct {
-	FromAccountID	int64	`json:"from_account_id"`
-	ToAccountID		int64 	`json:"to_account_id"`
-	Amount			int64 	`json:"amount"`
+	FromAccountID int64 `json:"from_account_id"`
+	ToAccountID   int64 `json:"to_account_id"`
+	Amount        int64 `json:"amount"`
 }
 
 // TransferTxResult is the result of the transfer transation
@@ -65,8 +65,8 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 
 		result.Transfer, err = q.CreateTransfer(ctx, CreateTransferParams{
 			FromAccountID: arg.FromAccountID,
-			ToAccountID: arg.ToAccountID,
-			Amount: arg.Amount,
+			ToAccountID:   arg.ToAccountID,
+			Amount:        arg.Amount,
 		})
 		if err != nil {
 			return err
@@ -74,7 +74,7 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 
 		result.FromEntry, err = q.CreateEntry(ctx, CreateEntryParams{
 			AccountID: arg.FromAccountID,
-			Amount: -arg.Amount,
+			Amount:    -arg.Amount,
 		})
 
 		if err != nil {
@@ -83,9 +83,25 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 
 		result.ToEntry, err = q.CreateEntry(ctx, CreateEntryParams{
 			AccountID: arg.ToAccountID,
-			Amount: arg.Amount,
+			Amount:    arg.Amount,
 		})
 
+		if err != nil {
+			return err
+		}
+
+		result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.FromAccountID,
+			Amount: -arg.Amount,
+		})
+		if err != nil {
+			return err
+		}
+
+		result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.ToAccountID,
+			Amount: arg.Amount,
+		})
 		if err != nil {
 			return err
 		}
